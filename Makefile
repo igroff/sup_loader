@@ -18,7 +18,8 @@ build_output/: node_modules/
 	mkdir -p build_output
 
 run-server: build_output/
-	exec bash -c "export APP_NAME=${APP_NAME}; test -r ~/.${APP_NAME}.env && . ~/.${APP_NAME}.env ; exec node server.js"
+	-exec bash -c "export APP_NAME=${APP_NAME}; test -r ~/.${APP_NAME}.env && . ~/.${APP_NAME}.env ; exec node server.js"
+	sleep .5
 
 clean:
 	rm -rf ./node_modules/
