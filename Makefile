@@ -27,4 +27,4 @@ clean:
 test:
 	rm -rf ./files
 	mkdir ./files
-	difftest run
+	TEST_HOST=localhost:3000 difftest run
