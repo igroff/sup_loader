@@ -36,6 +36,10 @@ function getReadStream(fileName){
   return fs.createReadStream(fileName);
 }
 
+// exception predicate 
+function FileExists(e) { return e.code === "EEXIST"; }
+function FileDoesNotExist(e) { return e.code === "ENOENT"; }
+
 // respond
 app.post('*', function(req, res){
   if (req.is('multipart/form-data')){
@@ -48,15 +52,21 @@ app.post('*', function(req, res){
     req.pipe(req.busboy);
   } else {
     function storeRequestData(paths){
-      var metaDataFileStream = getWriteStream(paths.metadata);
-      var metaDataFileSaved = new Promise(function(resolve, reject){
-        metaDataFileStream.on('close', resolve);
-        metaDataFileStream.on('error', reject);
-      });
-      metaDataFileStream.write(
-        JSON.stringify({mimetype:req.get('Content-Type')}),
-        function() { metaDataFileStream.close(); }
-      );
+      var metaDataFileSaved = null;
+      if (req.param("nomd")){
+        log.debug("you asked for no metadata file");
+        metaDataFileSaved = Promise.resolve();
+      } else {
+        var metaDataFileStream = getWriteStream(paths.metadata);
+        metaDataFileSaved = new Promise(function(resolve, reject){
+          metaDataFileStream.on('close', resolve);
+          metaDataFileStream.on('error', reject);
+        });
+        metaDataFileStream.write(
+          JSON.stringify({mimetype:req.get('Content-Type')}),
+          function() { metaDataFileStream.close(); }
+        );
+      }
 
       dataFileStream = getWriteStream(paths.file);
       dataFileSaved = new Promise(function(resolve, reject){
@@ -73,8 +83,6 @@ app.post('*', function(req, res){
       return mkdirp.mkdirpAsync(paths.dirname).return(paths);
     };
 
-    // exception predicate 
-    function FileExists(e) { return e.code === "EEXIST"; }
 
     Promise
     .resolve(getPaths(req.path))
@@ -121,8 +129,18 @@ app.get('*', function(req, res){
   
 });
 
+app.delete('*', function(req, res){
+  var paths = getPaths(req.path);
+  var deleteFile = function(){ return fs.unlinkAsync(paths.file); };
+  var deleteMd = function(){ return fs.unlinkAsync(paths.metadata);};
+  Promise
+    .settle([deleteFile(), deleteMd()])
+    .finally(function(){ res.send(); });
+});
+
 
 var listenPort = process.env.PORT || 3000;
 log.info("starting app " + process.env.APP_NAME);
 log.info("listening on " + listenPort);
+log.debug("debug logging enabled");
 app.listen(listenPort);
