@@ -53,6 +53,7 @@ app.post('*', function(req, res){
   } else {
     function storeRequestData(paths){
       var metaDataFileSaved = null;
+      // magic behavior to make testing possible
       if (req.param("nomd")){
         log.debug("you asked for no metadata file");
         metaDataFileSaved = Promise.resolve();
